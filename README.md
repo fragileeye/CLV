@@ -4,7 +4,7 @@ Correlated link based OOB-LFA detection
 ## Description of code
 + [D] 3cases: show the distribution of measured delay in varying cases
 + [D] corr_links_quality: show the measured link quality in varying cases
-+ [D] snapshot: show how clv works and the stat features of entropy and #K
++ [D] snapshot: show how clv works, see the distribution of entropy and #K
 + [D] compare: compare clv with related methods, and show the performance in varying network scales, fake links as well as tx delays  
 + [F] auto_traffic.py: generate background traffic with iperf
 + [F] base_topo.py: generate topology with varying switches, fake links as well as tx delays in Mininet
