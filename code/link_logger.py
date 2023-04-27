@@ -337,7 +337,7 @@ class LinkLogger(app_manager.RyuApp):
                 out_port = dst_endpoint[1] 
         
         actions = [ofp_parser.OFPActionOutput(out_port)]
-
+        
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
             match = ofp_parser.OFPMatch(in_port=in_port, eth_dst=dst)
