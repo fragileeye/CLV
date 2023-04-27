@@ -14,6 +14,7 @@ Correlated link based OOB-LFA detection
 + [F] outband_lldp_relay_attack.py: out-of-band relay module implemented with Pypcap
 + [F] outband_lldp_relay_attack_app.py: out-of-band relay module implemented with Scapy
 + [F] spot.py: calculate the threshold of entropy, see also [SPOT](https://github.com/Amossys-team/SPOT).
++ [F] switch_lldp_relay_attack.py: switch-based relay attack via modify flow rules.
 
 ## Description of dataset
 + dataset: compressed txt files which record raw link data, such as {src_link -> dst_link d_cs d_sc d_l, load}
