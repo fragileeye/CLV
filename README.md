@@ -1,5 +1,5 @@
 # CLV
-Correlated link based OOB-LFA detection
+Correlated link based LFA detection
 
 ## Description of code
 + [D] 3cases: show the distribution of measured delay in varying cases
@@ -21,4 +21,4 @@ Correlated link based OOB-LFA detection
 
 ## Please note
 + It is time-consuming to make the dataset, because there are too many situation need to be considered except writing the code.  
-+ We must confess that the dataset may be insufficient to cover all possible OOB-LFA cases, because it's only generated in our computer with limited parameters, such as volumn of background traffic, attack rate, etc. Nevertheless, we try our best to do the job and are willing to share our work. 
++ We must confess that the dataset may be insufficient to cover all possible LFA cases, because it's only generated in our computer with limited parameters, such as volumn of background traffic, attack rate, etc. Nevertheless, we try our best to do the job and are willing to share our work. 
