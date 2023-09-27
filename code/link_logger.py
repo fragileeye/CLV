@@ -441,9 +441,10 @@ class LinkLogger(app_manager.RyuApp):
         if endpoint not in self.host_map:
             self.host_map[mac] = endpoint 
             self.host_map[endpoint] = mac
-            self.logger.info('Add host {}: {}'.format(mac, endpoint)) 
+            # self.logger.info('Add host {}: {}'.format(mac, endpoint)) 
         else:
-            self.logger.info('Unknown host {}: {}'.format(mac, endpoint))
+            pass 
+            # self.logger.info('Unknown host {}: {}'.format(mac, endpoint))
 
     # check link loop and re-calculate short path for switch to switch
     @set_ev_cls(EventLinkAdd)
