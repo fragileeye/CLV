@@ -13,7 +13,7 @@ Correlated link based LFA detection
 + [F] link_logger.py: collect link data (link delay, link loads) based on Ryu
 + [F] outband_lldp_relay_attack.py: out-of-band relay module implemented with Pypcap
 + [F] outband_lldp_relay_attack_app.py: out-of-band relay module implemented with Scapy
-+ [F] spot.py: calculate the threshold of entropy, see also [SPOT](https://github.com/Amossys-team/SPOT).
++ [F] spot.py: calculate the threshold of entropy, see also [SPOT](https://github.com/Amossys-team/SPOT) or [EVT](https://github.com/DawnsonLi/EVT).
 + [F] switch_lldp_relay_attack.py: switch-based relay attack via modify flow rules.
 
 ## Description of dataset
@@ -21,4 +21,5 @@ Correlated link based LFA detection
 
 ## Please note
 + It is time-consuming to make the dataset, because there are too many situation need to be considered except writing the code.  
-+ We must confess that the dataset may be insufficient to cover all possible LFA cases, because it's only generated in our computer with limited parameters, such as volumn of background traffic, attack rate, etc. Nevertheless, we try our best to do the job and are willing to share our work. 
++ We must confess that the dataset may be insufficient to cover all possible LFA cases, because it's only generated in our computer with limited parameters, such as volumn of background traffic, attack rate, etc. Nevertheless, we try our best to do the job and are willing to share our work.
++ For more details, please refer to [A novel link fabrication attack detection method for low-latency SDN networks](https://doi.org/10.1016/j.jisa.2024.103807)
